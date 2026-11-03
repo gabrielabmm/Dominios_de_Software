@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autenticação de usuário</title>
+    <link rel="stylesheet" href="/style.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Autenticação de usuário</h1>
+      <form id="authentication-form">
+        <label for="identificador">Identificador ou e-mail</label>
+        <input id="identificador" name="identificador" type="text" required>
+
+        <label for="senha">Senha</label>
+        <input id="senha" name="senha" type="password" required>
+
+        <button type="submit">Entrar</button>
+      </form>
+      <p id="resultado" role="status" aria-live="polite"></p>
+    </main>
+  </body>
+</html>
