@@ -1,0 +1,36 @@
+# ==========================================
+# Skills de Agentes de IA (skills.sh / Codex / Claude)
+# ==========================================
+.agents/
+.claude/
+.cursor/
+.codex/
+.github/skills/
+skills-lock.json
+
+# ==========================================
+# Dependências e Ambiente (Node.js / Python)
+# ==========================================
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+coverage/
+
+# Python (caso use no protótipo)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ==========================================
+# Sistema Operacional e VS Code
+# ==========================================
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
