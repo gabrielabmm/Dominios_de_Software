@@ -1,0 +1,45 @@
+
+@startuml
+title Diagrama de Sequência - Autenticação Web
+
+actor Usuario
+participant "Browser" as Browser
+participant "Servidor HTTP em C" as Servidor
+participant "Módulo de Autenticação" as Auth
+participant "UserDatabase" as DB
+
+Usuario -> Browser: Acessa a aplicação
+Browser -> Servidor: GET /
+Servidor --> Browser: Retorna HTML, CSS e JavaScript
+Browser --> Usuario: Apresenta interface
+
+Usuario -> Browser: Informa identificador e senha
+Usuario -> Browser: Solicita autenticação
+Browser -> Browser: Organiza dados em JSON
+
+Browser -> Servidor: POST /autenticacao
+note over Browser, Servidor
+Content-Type: application/json
+end note
+
+Servidor -> Servidor: Interpreta requisição
+Servidor -> Auth: Encaminha credenciais
+Auth -> DB: Consulta usuário
+DB --> Auth: Retorna dados do usuário
+Auth -> Auth: Verifica senha com PBKDF2
+
+alt Credenciais válidas
+    Auth --> Servidor: Autenticação aprovada
+    Servidor --> Browser: HTTP 200 OK
+    Browser --> Usuario: Apresenta sucesso
+else Credenciais inválidas
+    Auth --> Servidor: Autenticação recusada
+    Servidor --> Browser: HTTP 401 Unauthorized
+    Browser --> Usuario: Apresenta falha
+else Erro interno
+    Auth --> Servidor: Erro de processamento
+    Servidor --> Browser: HTTP 500
+    Browser --> Usuario: Apresenta erro
+end
+
+@enduml
