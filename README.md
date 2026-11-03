@@ -2,7 +2,7 @@
 
 **Autor:** Emilly Ranny
 
-**Revisor:** Emilly Ranny
+**Revisor:** 
 
 Repositório da Atividade Prática Supervisionada (APS) da disciplina **Domínios de Software**, do curso de Bacharelado em Engenharia de Software da Universidade Federal de Goiás (UFG).
 
