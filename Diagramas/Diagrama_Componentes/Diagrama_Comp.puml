@@ -1,0 +1,33 @@
+@startuml
+title Diagrama de Componentes - Aplicação Web de Autenticação
+
+left to right direction
+skinparam componentStyle rectangle
+
+header
+Autor: Gabriela Brasileiro
+Revisor: Nome do Revisor
+endheader
+
+package "Front-end" {
+    component "Interface Web" as Front
+    component "HTML / CSS / JS" as Arquivos
+    Front -- Arquivos
+}
+
+package "Back-end - Processo Servidor em C" {
+    component "Servidor HTTP" as HTTP
+    component "Módulo de Autenticação" as Auth
+    component "UserDatabase" as DB
+}
+
+database "Arquivo JSON de Usuários" as JSON
+
+Front --> HTTP : Requisição HTTP\nPOST /autenticacao\nJSON
+
+HTTP --> Auth : Encaminha credenciais
+Auth --> DB : Consulta usuário
+JSON --> DB : Carregamento na inicialização
+
+HTTP --> Front : Resposta HTTP\nJSON
+@enduml
