@@ -1,6 +1,10 @@
-
 @startuml
 title Diagrama de Sequência - Autenticação Web
+
+header
+Autor: Gabriela Brasileiro
+Revisor: Nome do Revisor
+endheader
 
 actor Usuario
 participant "Browser" as Browser
