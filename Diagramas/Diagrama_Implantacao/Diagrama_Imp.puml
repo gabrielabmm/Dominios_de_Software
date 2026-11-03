@@ -1,0 +1,40 @@
+@startuml
+title Diagrama de Implantação - Aplicação Web de Autenticação
+
+node "Dispositivo do Usuário" as Cliente {
+    
+    node "Navegador Web" as Browser {
+        artifact "Interface Web" as Interface {
+            file "index.html"
+            file "style.css"
+            file "script.js"
+        }
+    }
+}
+
+node "Máquina Servidora" as Host {
+
+    node "Processo Servidor em C" as Processo {
+
+        component "Servidor HTTP" as HTTP
+
+        component "API de Autenticação" as API
+
+        component "Módulo de Autenticação" as Auth
+
+        database "UserDatabase\n(Estrutura em memória)" as DB
+    }
+
+    artifact "users.json" as JSON
+}
+
+HTTP -- API : Encaminhamento interno
+API -- Auth : Chamada interna
+Auth -- DB : Consulta de usuários
+JSON ..> DB : Carregamento na inicialização
+
+Browser --> HTTP : HTTP
+note on link
+GET / e POST /autenticacao
+end note
+@enduml
