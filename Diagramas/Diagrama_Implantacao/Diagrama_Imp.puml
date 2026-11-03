@@ -1,6 +1,11 @@
 @startuml
 title Diagrama de Implantação - Aplicação Web de Autenticação
 
+header
+Autor: Gabriela Brasileiro
+Revisor: Nome do Revisor
+endheader
+
 node "Dispositivo do Usuário" as Cliente {
     
     node "Navegador Web" as Browser {
