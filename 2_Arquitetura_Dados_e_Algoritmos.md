@@ -35,7 +35,7 @@ O protótipo recebe a requisição em `POST /autenticacao`.
 
 O repositório não é consultado em tempo de requisição: arquivo ou JSON inválido impede a inicialização. Durante a autenticação, hash inválido e falha criptográfica são erros internos (`500`), e não devem ser convertidos em `401` ou sucesso.
 
-O fluxo de autenticação da aplicação está representado visualmente no [Diagrama de Sequência](./Diagrama_Sequencia.png), que ilustra a interação entre os componentes envolvidos durante o processamento da requisição.
+O fluxo de autenticação da aplicação está representado visualmente no ![Diagrama de Sequência](./diagramas/Diagrama_Sequencia/Diagrama_Sequencia.png), que ilustra a interação entre os componentes envolvidos durante o processamento da requisição.
 
 ## 4. Modelo de dados e DTOs
 
