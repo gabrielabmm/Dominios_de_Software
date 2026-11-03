@@ -1,0 +1,5 @@
+auth-server
+auth-server.exe
+__pycache__/
+*.py[cod]
+data/users.json
