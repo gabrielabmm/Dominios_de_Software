@@ -1,7 +1,7 @@
 # 1. Escopo e Requisitos de Autenticação
 
 **Autor:** Emilly Ranny
-**Revisor:** __________________________________
+**Revisor:** Gabriela Brasileiro
 
 ## 1. Objetivo
 
