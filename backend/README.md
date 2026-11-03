@@ -14,7 +14,7 @@ No PowerShell, a partir desta pasta:
 
 ```powershell
 gcc -std=c11 -Wall -Wextra -Werror src/main.c src/auth.c -lws2_32 -o auth-server.exe
-$env:AUTH_USERS_FILE = "data/users.example.json"
+$env:AUTH_USERS_FILE = "data/users.json"
 $env:WEB_ROOT = "public"
 $env:HOST = "127.0.0.1"
 $env:PORT = "3000"
@@ -22,6 +22,12 @@ $env:PORT = "3000"
 ```
 
 O navegador pode acessar `http://127.0.0.1:3000`. A interface inclui um formulário simples e sem estilos; `POST /autenticacao` recebe JSON com `identificador` e `senha`. Em Linux, compile com `gcc -std=c11 -Wall -Wextra -Werror src/main.c src/auth.c -lcrypto -o auth-server`.
+
+## Dados locais para teste
+
+O arquivo local [backend/data/users.json](./data/users.json) contém dois usuários de demonstração. Para ambos, a senha digitada na tela é `123456`; o JSON guarda somente o hash PBKDF2, não a senha em texto puro. O arquivo está listado no `.gitignore` e não deve ser enviado ao Git. O arquivo versionável [backend/data/users.example.json](./data/users.example.json) é apenas um exemplo vazio.
+
+O hash não permite ler diretamente a senha original. Durante o login, o backend calcula um hash da senha digitada e compara o resultado com o valor guardado. Esses dados são exclusivamente para teste local; não use essas credenciais em produção.
 
 O backend carrega o repositório na inicialização, por `AUTH_USERS_JSON` ou pelo arquivo indicado em `AUTH_USERS_FILE`. Se nenhuma variável estiver definida, usa `data/users.example.json`. O formato é:
 

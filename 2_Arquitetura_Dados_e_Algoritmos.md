@@ -15,7 +15,7 @@ A única operação de negócio descrita é verificar credenciais e retornar a i
 - **Controlador HTTP em C:** recebe a requisição, valida sua estrutura, transforma a entrada HTTP em DTO de entrada, chama o módulo de autenticação e converte o resultado em resposta HTTP. Não consulta diretamente o repositório nem verifica senhas.
 - **Módulo de autenticação:** a função C `authenticate` recebe `const UserDatabase *database`, o identificador, a senha e um buffer de saída para o identificador do usuário. Ela percorre os registros carregados, verifica a senha e retorna um valor `AuthResult`.
 - **Repositório de usuários:** o protótipo carrega o JSON na inicialização para `UserDatabase`, uma estrutura em memória com limite de 256 registros. `authenticate` procura o identificador por comparação exata; não há uma interface de repositório nem adaptadores intercambiáveis.
-- **Verificador de senha:** a função interna `verify_password` verifica hashes PBKDF2-HMAC-SHA-256 com 600.000 iterações, usando a API criptográfica nativa do Windows no desenvolvimento local e OpenSSL no Linux/Render. A senha em texto puro não é persistida nem incluída na resposta.
+- **Verificador de senha:** a função interna `verify_password` usa PBKDF2-HMAC-SHA-256 para verificar a senha, usando a API criptográfica nativa do Windows no desenvolvimento local e OpenSSL no Linux/Render. A senha digitada não é persistida nem incluída na resposta.
 - **Interface web:** HTML, CSS mínimo e JavaScript enviam as credenciais ao backend e apresentam o resultado. O JavaScript não decide se a autenticação é válida; essa decisão é exclusivamente do backend C.
 
 O controlador é o adaptador de transporte HTTP. A função `authenticate` recebe explicitamente a base carregada pelo processo, mas consulta diretamente o vetor em memória. Os testes automatizados são de integração HTTP: compilam o servidor, inicializam-no com arquivos JSON temporários e verificam as respostas e os recursos estáticos.
@@ -53,7 +53,7 @@ A Tabela 1 descreve o objeto de cada elemento de `usuarios` no JSON e o seu arma
 
 **Legenda:** os nomes à esquerda são as chaves do registro JSON; os nomes à direita e os tipos são os campos reais da estrutura C `AuthUser`. O vetor de usuários tem limite de 256 registros (`AUTH_MAX_USERS`); `UserDatabase.count` é do tipo `size_t`.
 
-O parser rejeita registros com campos ausentes, campos não previstos, identificadores ou IDs duplicados, e senha em texto puro. O hash deve estar no formato PBKDF2 definido na Seção 5.2; a validação criptográfica ocorre quando o usuário é autenticado.
+O parser rejeita registros com campos ausentes, campos não previstos, identificadores ou IDs duplicados, e senha em texto puro. `senhaHash` guarda o resultado PBKDF2 da senha, não a senha original.
 
 ### 4.2 DTO de entrada — `Credenciais`
 
@@ -158,10 +158,9 @@ O enum C `AuthResult` possui exatamente os resultados `AUTH_SUCCESS`, `AUTH_INVA
 
 ### 5.2 Comparação segura da senha
 
-1. Armazenar somente um hash PBKDF2-HMAC-SHA-256 com salt de 16 bytes e derivação de 32 bytes; nunca armazenar senha em texto puro nem usar hash rápido e genérico como substituto.
-2. O protótipo fixa 600.000 iterações no formato `$pbkdf2-sha256$600000$saltBase64$hashBase64`, com Base64 sem preenchimento de `=`. Cada registro deve ser provisionado por um processo externo confiável; a API não oferece cadastro nem geração de hashes.
-3. Na autenticação, derivar a chave com PBKDF2-HMAC-SHA-256 e comparar os 32 bytes por um acumulador de tempo constante, sem comparação textual do hash.
-4. Uma senha incorreta resulta em falha de autenticação. Um hash malformado ou erro inesperado da biblioteca resulta em falha interna, registrada sem incluir senha, hash ou outros segredos.
+O arquivo guarda um hash da senha, não a senha original. Para verificar o login, o backend aplica PBKDF2-HMAC-SHA-256 à senha digitada, usando o salt guardado no registro, e compara o resultado com o hash registrado. Cada usuário tem seu próprio salt; o protótipo usa 600.000 iterações e compara os bytes em tempo constante.
+
+Assim, o servidor confirma se a senha digitada corresponde à cadastrada sem salvar nem devolver a senha em texto puro. Se a senha não corresponder, o resultado é `AUTH_INVALID_CREDENTIALS`; se o hash estiver malformado ou a operação criptográfica falhar, o resultado é `AUTH_INTERNAL_ERROR`. O arquivo de usuários é preparado fora da API, que não cadastra usuários nem gera hashes.
 
 ### 5.3 Mapeamento de erros HTTP
 

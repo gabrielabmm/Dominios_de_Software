@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: dominios-autenticacao
+    env: native
+    buildCommand: apt-get update && apt-get install -y libssl-dev && cd backend && gcc -std=c11 -O2 -Wall -Wextra -Werror src/main.c src/auth.c -lcrypto -o auth-server
+    startCommand: cd backend && ./auth-server
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: AUTH_USERS_JSON
+        sync: false
