@@ -2,7 +2,7 @@
 
 **Autor:** Emilly Ranny
 
-**Revisor:** Emilly Ranny
+**Revisor:** 
 
 ## 1. Objetivo e premissas
 
