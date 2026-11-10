@@ -2,7 +2,7 @@
 
 **Autor:** Emilly Ranny
 
-**Revisor:** 
+**Revisor:** Thyago Siriano
 
 ## Objetivo
 
