@@ -1,1 +1,14 @@
-/* Aguardando Interface */
+#resultado {
+  min-height: 1.5em;
+  margin-top: 1rem;
+}
+
+#resultado[data-state="error"] {
+  color: #b42318;
+  font-weight: 600;
+}
+
+#resultado[data-state="success"] {
+  color: #067647;
+  font-weight: 600;
+}
