@@ -15,12 +15,15 @@
 #define HASH_SALT_SIZE 16
 #define HASH_TAG_SIZE 32
 
+/* Estado do parser JSON: texto não precisa ser terminado por '\0'; length
+ * limita a leitura, e position avança conforme os tokens são consumidos. */
 typedef struct {
   const char *text;
   size_t length;
   size_t position;
 } JsonParser;
 
+/* Avança espaços permitidos pelo JSON sem ultrapassar o fim do buffer. */
 static void skip_whitespace(JsonParser *parser) {
   while (parser->position < parser->length) {
     char value = parser->text[parser->position];
@@ -31,6 +34,8 @@ static void skip_whitespace(JsonParser *parser) {
   }
 }
 
+/* Consome um caractere estrutural esperado, ignorando espaços antes dele.
+ * Retorna 0 sem avançar se o próximo token não corresponder. */
 static int consume(JsonParser *parser, char expected) {
   skip_whitespace(parser);
   if (parser->position >= parser->length ||
@@ -41,6 +46,8 @@ static int consume(JsonParser *parser, char expected) {
   return 1;
 }
 
+/* Codifica um ponto Unicode como UTF-8 e verifica espaço para o terminador
+ * nulo. Os valores inválidos (surrogates isolados, NUL e > U+10FFFF) falham. */
 static int append_utf8(char *output, size_t capacity, size_t *written,
                        unsigned int codepoint) {
   unsigned char bytes[4];
@@ -79,6 +86,7 @@ static int append_utf8(char *output, size_t capacity, size_t *written,
   return 1;
 }
 
+/* Converte um dígito hexadecimal em seu valor numérico; -1 indica erro. */
 static int hex_value(char value) {
   if (value >= '0' && value <= '9') {
     return value - '0';
@@ -92,6 +100,7 @@ static int hex_value(char value) {
   return -1;
 }
 
+/* Lê exatamente quatro dígitos hexadecimais do escape JSON \\uXXXX. */
 static int parse_hex_quad(JsonParser *parser, unsigned int *value) {
   unsigned int result = 0;
   int index;
@@ -110,6 +119,9 @@ static int parse_hex_quad(JsonParser *parser, unsigned int *value) {
   return 1;
 }
 
+/* Lê uma string JSON, tratando escapes padrão e pares surrogate e convertendo
+ * escapes Unicode em UTF-8. Rejeita controles, escapes desconhecidos e strings
+ * que não cabem no buffer de destino. */
 static int parse_json_string(JsonParser *parser, char *output,
                              size_t capacity) {
   size_t written = 0;
@@ -193,6 +205,8 @@ static int parse_json_string(JsonParser *parser, char *output,
   return 0;
 }
 
+/* Usado para validar campos obrigatórios: espaços, tabs e quebras de linha
+ * não contam como um identificador/hash preenchido. Não altera o conteúdo. */
 static int is_blank(const char *value) {
   const unsigned char *cursor = (const unsigned char *)value;
   while (*cursor != '\0') {
@@ -205,6 +219,9 @@ static int is_blank(const char *value) {
   return 1;
 }
 
+/* Constrói um AuthUser a partir de um objeto JSON. Exige exatamente os três
+ * campos previstos, sem repetições, e não aceita dados extras nem valores
+ * vazios. A senha armazenada deve ser o hash, nunca a senha em texto puro. */
 static int parse_user(JsonParser *parser, AuthUser *user) {
   int has_id = 0;
   int has_identifier = 0;
@@ -261,6 +278,9 @@ static int parse_user(JsonParser *parser, AuthUser *user) {
          !is_blank(user->senha_hash);
 }
 
+/* Valida o documento completo {"usuarios":[...]}, até 256 registros, sem
+ * dados sobrando no final, IDs repetidos ou identificadores repetidos.
+ * Rejeitar duplicidades torna a busca por identificador inequívoca. */
 static int parse_user_database(const char *json, size_t length,
                                UserDatabase *database) {
   JsonParser parser = {json, length, 0};
@@ -318,6 +338,8 @@ static int parse_user_database(const char *json, size_t length,
   return 1;
 }
 
+/* Carrega o arquivo em memória, com limite de 1 MiB, e valida seu JSON antes
+ * de disponibilizar a base. Retorna 1 somente se leitura e parsing concluírem. */
 int load_user_database(const char *file_path, UserDatabase *database) {
   FILE *file;
   long file_size;
@@ -348,6 +370,8 @@ int load_user_database(const char *file_path, UserDatabase *database) {
   return valid;
 }
 
+/* Variante usada quando os dados vêm diretamente da variável de ambiente
+ * AUTH_USERS_JSON; preserva o mesmo limite e as mesmas regras do arquivo. */
 int load_user_database_json(const char *json, size_t length,
                             UserDatabase *database) {
   if (length > 1024 * 1024) {
@@ -356,6 +380,9 @@ int load_user_database_json(const char *json, size_t length,
   return parse_user_database(json, length, database);
 }
 
+/* Analisa o DTO recebido em POST /autenticacao. Exige somente duas strings
+ * não vazias (identificador e senha), sem campos duplicados ou extras; não
+ * normaliza a senha, pois espaços podem fazer parte da credencial. */
 int parse_credentials(const char *json, size_t length, char *identifier,
                       size_t identifier_size, char *password,
                       size_t password_size) {
@@ -406,6 +433,7 @@ int parse_credentials(const char *json, size_t length, char *identifier,
          has_password && !is_blank(identifier) && !is_blank(password);
 }
 
+/* Decodifica um caractere do alfabeto Base64 sem padding. */
 static int base64_value(char value) {
   if (value >= 'A' && value <= 'Z') {
     return value - 'A';
@@ -425,6 +453,8 @@ static int base64_value(char value) {
   return -1;
 }
 
+/* Decodifica o Base64 sem padding usado no formato de hash e exige o tamanho
+ * binário exato esperado para salt ou chave derivada. */
 static int decode_base64(const char *input, size_t input_length,
                          unsigned char *output, size_t output_length) {
   size_t input_index;
@@ -455,6 +485,8 @@ static int decode_base64(const char *input, size_t input_length,
          (bits == 0 || (accumulator & ((1u << bits) - 1u)) == 0);
 }
 
+/* Deriva uma chave PBKDF2-HMAC-SHA-256. No Windows usa CNG (bcrypt.dll);
+ * nos demais sistemas usa OpenSSL. A implementação não armazena a senha. */
 static int derive_key(const char *password, const unsigned char *salt,
                       unsigned char *output) {
 #ifdef _WIN32
@@ -503,6 +535,8 @@ static int derive_key(const char *password, const unsigned char *salt,
 #endif
 }
 
+/* Compara todos os bytes sem sair no primeiro byte divergente, reduzindo
+ * vazamento de informação pelo tempo de comparação. */
 static int constant_time_equal(const unsigned char *left,
                                const unsigned char *right, size_t length) {
   /* Acumular todas as diferenças evita encerrar a comparação no primeiro byte. */
@@ -514,6 +548,10 @@ static int constant_time_equal(const unsigned char *left,
   return difference == 0;
 }
 
+/* Valida o formato versionado do hash armazenado, decodifica salt e hash
+ * esperado, deriva a chave para a senha digitada e compara os 32 bytes.
+ * Retorna 1 para senha correta, 0 para divergência e -1 para erro interno ou
+ * hash malformado; o controlador transforma o último caso em HTTP 500. */
 static int verify_password(const char *password, const char *encoded_hash) {
   /* Custos variáveis vindos do JSON permitiriam exigir trabalho ilimitado. */
   static const char prefix[] = "$pbkdf2-sha256$600000$";
@@ -545,6 +583,9 @@ static int verify_password(const char *password, const char *encoded_hash) {
   return constant_time_equal(actual_tag, expected_tag, sizeof(actual_tag));
 }
 
+/* Executa uma derivação com salt fixo quando o identificador não existe.
+ * Isso aproxima o custo computacional dos dois caminhos e reduz diferenças
+ * de tempo que poderiam facilitar a descoberta de contas cadastradas. */
 static int perform_dummy_derivation(const char *password) {
   static const unsigned char dummy_salt[HASH_SALT_SIZE] = {
       0x61, 0x75, 0x74, 0x68, 0x2d, 0x64, 0x75, 0x6d,
@@ -554,6 +595,10 @@ static int perform_dummy_derivation(const char *password) {
   return derive_key(password, dummy_salt, ignored_tag);
 }
 
+/* Regra central da aplicação: procura o identificador por igualdade exata,
+ * verifica o hash apenas para o usuário encontrado e copia somente usuarioId
+ * no sucesso. Conta inexistente e senha incorreta resultam no mesmo enum;
+ * falhas de hash/crypto ou buffer insuficiente são erros internos. */
 AuthResult authenticate(const UserDatabase *database, const char *identifier,
                         const char *password, char *user_id,
                         size_t user_id_size) {
