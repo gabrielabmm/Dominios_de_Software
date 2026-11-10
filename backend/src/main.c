@@ -29,6 +29,7 @@ typedef int Socket;
 #define MAX_REQUEST_SIZE (MAX_HEADER_SIZE + MAX_BODY_SIZE + 1)
 #define MAX_PATH_SIZE 512
 
+/* DTO interno: reúne os campos HTTP já extraídos e validados pelo servidor. */
 typedef struct {
   char method[16];
   char path[MAX_PATH_SIZE];
@@ -40,6 +41,8 @@ typedef struct {
   int invalid_headers;
 } HttpRequest;
 
+/* send() pode transmitir menos bytes do que o solicitado; este laço completa
+ * a resposta ou indica falha de transporte ao chamador. */
 static int send_all(Socket client, const char *data, size_t length) {
   size_t sent = 0;
   while (sent < length) {
@@ -56,6 +59,8 @@ static int send_all(Socket client, const char *data, size_t length) {
   return 1;
 }
 
+/* Monta uma resposta HTTP/1.1 com tamanho explícito e cabeçalhos comuns.
+ * Connection: close simplifica o servidor: uma conexão atende uma requisição. */
 static void send_response(Socket client, int status, const char *reason,
                           const char *content_type, const char *body,
                           size_t body_length, const char *additional_headers) {
@@ -78,6 +83,7 @@ static void send_response(Socket client, int status, const char *reason,
   }
 }
 
+/* Formato comum das respostas JSON de erro, com status e código estáveis. */
 static void send_json(Socket client, int status, const char *code,
                       const char *message) {
   char body[512];
@@ -98,6 +104,7 @@ static void send_json(Socket client, int status, const char *code,
   }
 }
 
+/* Resposta padrão para método incompatível; Allow informa o método aceito. */
 static void send_method_not_allowed(Socket client, const char *allowed_method) {
   char headers[64];
   int length = snprintf(headers, sizeof(headers), "Allow: %s\r\n",
@@ -112,6 +119,7 @@ static void send_method_not_allowed(Socket client, const char *allowed_method) {
   }
 }
 
+/* Nomes de cabeçalhos HTTP não diferenciam maiúsculas de minúsculas. */
 static int equals_ignore_case(const char *left, const char *right) {
   while (*left != '\0' && *right != '\0') {
     if (tolower((unsigned char)*left) != tolower((unsigned char)*right)) {
@@ -123,6 +131,9 @@ static int equals_ignore_case(const char *left, const char *right) {
   return *left == '\0' && *right == '\0';
 }
 
+/* Interpreta a linha inicial e os cabeçalhos que afetam o corpo. Rejeita
+ * Content-Length repetido/malformado e Transfer-Encoding, evitando aceitar
+ * enquadramentos de corpo ambíguos neste servidor HTTP mínimo. */
 static int parse_request_headers(char *buffer, size_t header_length,
                                  HttpRequest *request) {
   char *line_end;
@@ -223,6 +234,8 @@ static int parse_request_headers(char *buffer, size_t header_length,
   return 1;
 }
 
+/* Descarta, em blocos pequenos, o restante do corpo que excedeu o limite,
+ * permitindo que a resposta 413 seja enviada antes de fechar a conexão. */
 static void drain_request_body(Socket client, size_t already_read,
                                size_t expected_length) {
   char discard[4096];
@@ -241,6 +254,8 @@ static void drain_request_body(Socket client, size_t already_read,
   }
 }
 
+/* Limita a espera por bytes do cliente para que uma conexão lenta não prenda
+ * indefinidamente o único processo que atende requisições. */
 static void set_receive_timeout(Socket client) {
 #ifdef _WIN32
   DWORD timeout = 3000;
@@ -254,6 +269,9 @@ static void set_receive_timeout(Socket client) {
 #endif
 }
 
+/* Lê primeiro os cabeçalhos e depois exatamente o Content-Length informado.
+ * Retorna 200 para requisição recebida, 400 para entrada incompleta/malformada
+ * ou 413 quando os limites de cabeçalho/corpo são excedidos. */
 static int receive_request(Socket client, char *buffer, size_t capacity,
                            size_t *request_length, HttpRequest *request) {
   size_t used = 0;
@@ -311,6 +329,8 @@ static int receive_request(Socket client, char *buffer, size_t capacity,
   return 200;
 }
 
+/* Escapa aspas, barras invertidas e controles antes de inserir texto do
+ * identificador do usuário numa resposta JSON criada por snprintf. */
 static void escape_json_string(const char *input, char *output,
                                size_t output_size) {
   size_t written = 0;
@@ -334,6 +354,8 @@ static void escape_json_string(const char *input, char *output,
   output[written] = '\0';
 }
 
+/* Aceita application/json, com parâmetros opcionais como charset=utf-8,
+ * mas rejeita tipos incompatíveis. */
 static int content_type_is_json(const char *content_type) {
   static const char expected[] = "application/json";
   size_t index;
@@ -346,6 +368,8 @@ static int content_type_is_json(const char *content_type) {
          content_type[sizeof(expected) - 1] == ';';
 }
 
+/* Em log interno registra apenas um evento genérico: não inclui credenciais,
+ * hashes, nem detalhes de implementação que poderiam revelar dados sensíveis. */
 static void log_internal_error(void) {
   fprintf(stderr,
           "{\"evento\":\"falha_interna_de_autenticacao\","
@@ -353,6 +377,8 @@ static void log_internal_error(void) {
   fflush(stderr);
 }
 
+/* Serve somente nomes de arquivo escolhidos pelo roteador (não o caminho
+ * fornecido pelo cliente), limitando o recurso estático a 1 MiB. */
 static void serve_static_file(Socket client, const char *web_root,
                               const char *file_name,
                               const char *content_type) {
@@ -409,6 +435,10 @@ static void serve_static_file(Socket client, const char *web_root,
   free(contents);
 }
 
+/* Roteador/controller HTTP do protótipo:
+ * - GET /, /index.html, /app.js e /style.css servem a interface;
+ * - POST /autenticacao valida o contrato e delega a regra a authenticate();
+ * - demais métodos/caminhos retornam 405/404 sem chamar a autenticação. */
 static void handle_request(Socket client, const char *request_buffer,
                            size_t request_length,
                            const HttpRequest *request,
@@ -462,6 +492,8 @@ static void handle_request(Socket client, const char *request_buffer,
   }
 
   {
+    /* DTO de entrada, buffer de saída e buffers de serialização têm tamanhos
+     * fixos definidos no contrato de auth.h; não guardam estado entre chamadas. */
     char identifier[AUTH_IDENTIFIER_SIZE];
     char password[AUTH_PASSWORD_SIZE];
     char user_id[AUTH_USER_ID_SIZE];
@@ -476,6 +508,7 @@ static void handle_request(Socket client, const char *request_buffer,
                 "A requisição contém dados ausentes ou inválidos.");
       return;
     }
+    /* A busca e a decisão de autenticação vivem no módulo auth, não no HTTP. */
     result = authenticate(database, identifier, password, user_id,
                           sizeof(user_id));
     if (result == AUTH_INVALID_CREDENTIALS) {
@@ -490,6 +523,8 @@ static void handle_request(Socket client, const char *request_buffer,
       return;
     }
 
+    /* O ID pode conter caracteres especiais; escapamos antes da serialização.
+     * A resposta de sucesso expõe somente a identidade, nunca senha ou hash. */
     escape_json_string(user_id, escaped_user_id, sizeof(escaped_user_id));
     response_length =
         snprintf(response_body, sizeof(response_body),
@@ -506,6 +541,8 @@ static void handle_request(Socket client, const char *request_buffer,
   }
 }
 
+/* Converte PORT em inteiro válido para TCP (1..65535); evita truncamentos e
+ * valores que não poderiam ser usados como porta. */
 static int parse_port(const char *value, unsigned short *port) {
   char *end;
   unsigned long parsed;
@@ -521,6 +558,12 @@ static int parse_port(const char *value, unsigned short *port) {
   return 1;
 }
 
+/* Ponto de entrada do servidor:
+ * 1. lê configuração do ambiente e carrega/valida usuários uma única vez;
+ * 2. inicializa Winsock quando aplicável e abre o socket TCP;
+ * 3. aceita conexões sequencialmente, processa uma requisição e fecha o socket.
+ * AUTH_USERS_JSON tem precedência sobre AUTH_USERS_FILE; o arquivo padrão é
+ * apenas o exemplo vazio. Falha de configuração impede o servidor de iniciar. */
 int main(void) {
   const char *data_path = getenv("AUTH_USERS_FILE");
   const char *data_json = getenv("AUTH_USERS_JSON");
@@ -625,6 +668,8 @@ int main(void) {
   }
 
   for (;;) {
+    /* O servidor é síncrono e atende uma conexão por vez. O timeout de leitura
+     * e os limites acima protegem o ciclo, mas não o tornam concorrente. */
     Socket client = accept(server_socket, NULL, NULL);
     char request_buffer[MAX_REQUEST_SIZE];
     size_t request_length = 0;
