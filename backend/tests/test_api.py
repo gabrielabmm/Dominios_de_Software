@@ -189,9 +189,13 @@ class AuthenticationApiTests(unittest.TestCase):
         self.assertEqual(page_status, 200)
         self.assertIn(b"lang=\"pt-BR\"", page)
         self.assertIn(b"/app.js", page)
+        self.assertIn(b"<script defer src=\"/app.js\"></script>", page)
         self.assertEqual(script_status, 200)
         self.assertIn(("Content-Type", "text/javascript; charset=utf-8"), script_headers)
         self.assertIn(b"fetch(\"/autenticacao\"", script)
+        self.assertIn("Login realizado com sucesso!".encode(), script)
+        self.assertIn(b"typeof body?.mensagem === \"string\"", script)
+        self.assertIn("Identificador ou senha inválidos.".encode(), script)
         self.assertEqual(style_status, 200)
         self.assertIn(("Content-Type", "text/css; charset=utf-8"), style_headers)
 
