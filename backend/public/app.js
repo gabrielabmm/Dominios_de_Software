@@ -2,10 +2,15 @@ const form = document.querySelector("#authentication-form");
 const result = document.querySelector("#resultado");
 const submitButton = form.querySelector("button[type='submit']");
 
+function showResult(message, state) {
+  result.textContent = message;
+  result.dataset.state = state;
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   submitButton.disabled = true;
-  result.textContent = "Verificando credenciais...";
+  showResult("Verificando credenciais...", "pending");
 
   try {
     let response;
@@ -22,7 +27,7 @@ form.addEventListener("submit", async (event) => {
       if (!(error instanceof TypeError)) {
         throw error;
       }
-      result.textContent = "Não foi possível conectar ao servidor.";
+      showResult("Não foi possível conectar ao servidor.", "error");
       return;
     }
 
@@ -33,15 +38,27 @@ form.addEventListener("submit", async (event) => {
       if (!(error instanceof SyntaxError)) {
         throw error;
       }
-      result.textContent = "O servidor retornou uma resposta inválida.";
+      showResult("O servidor retornou uma resposta inválida.", "error");
       return;
     }
 
     if (response.ok) {
-      result.textContent = `Autenticação bem-sucedida. Usuário: ${body.usuarioId}`;
+      showResult(
+        `Login realizado com sucesso! Usuário: ${body.usuarioId}`,
+        "success",
+      );
     } else {
-      result.textContent = body.mensagem ?? "Não foi possível autenticar.";
+      showResult(
+        typeof body?.mensagem === "string" && body.mensagem
+          ? body.mensagem
+          : response.status === 401
+            ? "Identificador ou senha inválidos."
+            : "Não foi possível autenticar.",
+        "error",
+      );
     }
+  } catch {
+    showResult("Não foi possível concluir a autenticação.", "error");
   } finally {
     submitButton.disabled = false;
   }
