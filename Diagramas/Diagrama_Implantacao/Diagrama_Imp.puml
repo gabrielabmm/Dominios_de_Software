@@ -3,7 +3,7 @@ title Diagrama de Implantação - Aplicação Web de Autenticação
 
 header
 Autor: Gabriela Brasileiro
-Revisor: Nome do Revisor
+Revisor: Emilly Ranny
 endheader
 
 node "Dispositivo do Usuário" as Cliente {
