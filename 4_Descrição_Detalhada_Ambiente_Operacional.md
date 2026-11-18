@@ -1,6 +1,6 @@
 # 4. Descrição detalhada do ambiente operacional
 Autor: Gabriela Brasileiro
-Revisor:
+Revisor: Thyago Siriano
 
 ## 4.1. Visão geral do ambiente
 
