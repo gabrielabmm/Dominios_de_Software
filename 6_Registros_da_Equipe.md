@@ -1,7 +1,7 @@
 # 6. Registros de Comunicação da Equipe
 
 **Autor:** Thyago Siriano
-**Revisor:** (definir)
+**Revisor:** Gabriela Brasileiro
 
 Os registros são capturas de tela de chamadas de voz no Discord (canal Domínios). A Tabela 1 resume as reuniões e as Figuras 1 e 2 apresentam as evidências.
 
