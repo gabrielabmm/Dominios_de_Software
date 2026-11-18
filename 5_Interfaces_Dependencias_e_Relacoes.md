@@ -1,5 +1,8 @@
 # 5. Interfaces, Dependências e Decisões Arquiteturais
 
+Autor: Gabriela Brasileiro
+Revisor: Emilly Ranny
+
 ## 5.1. Interfaces de comunicação
 
 As interfaces definem como os diferentes componentes da aplicação trocam informações e solicitam serviços uns aos outros.
