@@ -2,7 +2,7 @@
 
 **Autor:** Emilly Ranny
 
-**Revisor:** 
+**Revisor:** Thyago Siriano
 
 Vocabulário do domínio de autenticação de usuários e da verificação de credenciais.
 
